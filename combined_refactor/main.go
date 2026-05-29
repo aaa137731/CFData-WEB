@@ -235,7 +235,9 @@ func main() {
 	}
 	fmt.Printf("CFData-WEB 版本: %s\n", appVersion)
 	go checkAndPrintUpdate("")
-	fmt.Printf("服务启动于 http://%s:%d\n", displayHost, listenPort)
+	displayURL := fmt.Sprintf("http://%s:%d", displayHost, listenPort)
+	fmt.Printf("服务启动于 %s\n", displayURL)
+	fmt.Printf("服务启动成功，复制 %s 到浏览器打开\n", displayURL)
 	if webUser != "" && webPassword != "" {
 		fmt.Printf("Web 认证已启用，用户名: %s\n", webUser)
 		fmt.Printf("Web 会话有效期: %s 分钟\n", strconv.Itoa(webSessionMinutes))

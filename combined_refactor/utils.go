@@ -46,7 +46,25 @@ func readNonEmptyLines(reader io.Reader) ([]string, error) {
 }
 
 func parseIPList(content string) ([]string, error) {
-	return readNonEmptyLines(strings.NewReader(content))
+	lines, err := readNonEmptyLines(strings.NewReader(content))
+	if err != nil {
+		return nil, err
+	}
+	for i, line := range lines {
+		if strings.Contains(line, "/") {
+			continue
+		}
+		ip := net.ParseIP(line)
+		if ip == nil {
+			continue
+		}
+		if ip.To4() != nil {
+			lines[i] = line + "/32"
+		} else {
+			lines[i] = line + "/128"
+		}
+	}
+	return lines, nil
 }
 
 func readIPs(filename string, enableTLS bool) ([]string, error) {
