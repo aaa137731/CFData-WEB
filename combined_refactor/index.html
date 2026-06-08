@@ -1829,6 +1829,10 @@
                         <label>自定义字段</label>
                         <input id="resultCustomFields" type="text" placeholder="标题:内容，多项用逗号分隔，例如 备注:测试版,归属:cfdata" oninput="handleCustomResultFieldsChange()">
                     </div>
+                    <div class="modal-field full" id="resultTextSeparatorField">
+                        <label>TXT 字段分隔符</label>
+                        <input id="resultTextSeparator" list="textSeparatorOptions" type="text" value="-" placeholder="例如 -、|、空格、~、_" oninput="updateResultPreview()">
+                    </div>
                     <div class="modal-field full">
                         <label>输出顺序</label>
                         <div class="order-list" id="resultOrderList"></div>
@@ -1937,6 +1941,10 @@
                         <input id="copyCustomFields" type="text" placeholder="标题:内容，多项用逗号分隔，例如 备注:测试版,归属:cfdata" oninput="handleCustomCopyFieldsChange()">
                     </div>
                     <div class="modal-field full">
+                        <label>TXT 字段分隔符</label>
+                        <input id="copyTextSeparator" list="textSeparatorOptions" type="text" value="-" placeholder="例如 -、|、空格、~、_" oninput="updateCopyPreview()">
+                    </div>
+                    <div class="modal-field full">
                         <label>输出顺序</label>
                         <div class="order-list" id="copyOrderList"></div>
                     </div>
@@ -1991,6 +1999,16 @@
             </div>
         </div>
     </div>
+
+    <datalist id="textSeparatorOptions">
+        <option value="-">-</option>
+        <option value="|">|</option>
+        <option value="空格">空格</option>
+        <option value="~">~</option>
+        <option value="_">_</option>
+        <option value=",">,</option>
+        <option value=".">.</option>
+    </datalist>
 
     <div class="modal-mask" id="proxyWarningMask">
         <div class="result-modal proxy-warning-modal">
@@ -4121,6 +4139,8 @@
             const format = document.getElementById('resultFormat').value;
             if (!resultFieldOrder.length) resultFieldOrder = getDefaultResultFieldOrder(format);
             if (format === 'txt' && !resultFieldOrder.includes('ipport')) resultFieldOrder.unshift('ipport');
+            const separatorField = document.getElementById('resultTextSeparatorField');
+            if (separatorField) separatorField.style.display = format === 'txt' ? '' : 'none';
             const rows = getCurrentResultRows(resultModalMode);
             const available = RESULT_FIELDS.filter((f) => f.key === 'ipport' || rows.some((r) => String(r[f.key] ?? '').trim() !== '')).concat(resultCustomFields);
             document.querySelectorAll('.github-field').forEach((el) => el.style.display = '');
@@ -4536,7 +4556,7 @@
             const rows = getSelectedCopyRows();
             if (!rows.length) throw new Error('暂无可复制结果');
             const fields = copyFieldOrder.length ? copyFieldOrder : getDefaultResultFieldOrderFor(copyModalMode, 'txt');
-            return buildResultContent('txt', rows, fields);
+            return buildResultContent('txt', rows, fields, getTextSeparator('copyTextSeparator'));
         }
 
         function buildCopyPreview() {
@@ -4546,7 +4566,8 @@
             const first = rows[0];
             const ipport = first.ipport || `${first.ip || ''}:${first.port || ''}`;
             const extras = fields.filter((key) => key !== 'ipport').map((key) => first[key]).filter((value) => String(value ?? '').trim() !== '');
-            return extras.length ? `${ipport}#${extras.join('-')}` : ipport;
+            const separator = getTextSeparator('copyTextSeparator');
+            return extras.length ? `${ipport}#${extras.join(separator)}` : ipport;
         }
 
         function updateCopyPreview() {
@@ -4639,16 +4660,22 @@
             const rows = getSelectedResultRows();
             if (!rows.length) throw new Error('暂无可操作结果');
             const fields = resultFieldOrder.length ? resultFieldOrder : getDefaultResultFieldOrder(format);
-            return buildResultContent(format, rows, fields);
+            return buildResultContent(format, rows, fields, getTextSeparator('resultTextSeparator'));
         }
 
-        function buildResultContent(format, rows, fields) {
+        function getTextSeparator(inputId) {
+            const raw = document.getElementById(inputId)?.value ?? '-';
+            if (raw === '空格') return ' ';
+            return raw;
+        }
+
+        function buildResultContent(format, rows, fields, textSeparator = '-') {
             if (!rows.length) throw new Error('暂无可操作结果');
             if (format === 'txt') {
                 return rows.map((r) => {
                     const ipport = r.ipport || `${r.ip || ''}:${r.port || ''}`;
                     const extras = fields.filter((k) => k !== 'ipport').map((k) => r[k]).filter((v) => String(v ?? '').trim() !== '');
-                    return extras.length ? `${ipport}#${extras.join('-')}` : ipport;
+                    return extras.length ? `${ipport}#${extras.join(textSeparator)}` : ipport;
                 }).join('\n') + '\n';
             }
             const byKey = Object.fromEntries(RESULT_FIELDS.concat(resultCustomFields).map((f) => [f.key, f]));
@@ -4682,7 +4709,7 @@
             if (format === 'txt') {
                 const ipport = first.ipport || `${first.ip || ''}:${first.port || ''}`;
                 const extras = fields.filter((k) => k !== 'ipport').map((k) => first[k]).filter((v) => String(v ?? '').trim() !== '');
-                return extras.length ? `${ipport}#${extras.join('-')}` : ipport;
+                return extras.length ? `${ipport}#${extras.join(getTextSeparator('resultTextSeparator'))}` : ipport;
             }
             const byKey = Object.fromEntries(RESULT_FIELDS.concat(resultCustomFields).map((f) => [f.key, f]));
             const headers = fields.map((k) => byKey[k]?.label || k).join(',');
