@@ -3484,14 +3484,15 @@
             const safeIP = escapeHTML(rawIP);
             const jsIP = escapeJSString(rawIP);
             const hrefIP = encodeURIComponent(rawIP);
-            let titleAttr = '';
+            let domainIcon = '';
             if (originalInput && originalInput !== rawIP) {
                 const isDomain = /[a-zA-Z]/.test(originalInput);
-                const sourceType = isDomain ? '域名' : 'IP';
-                const safeSource = escapeHTML(originalInput);
-                titleAttr = ` title="来源${sourceType}: ${safeSource}"`;
+                if (isDomain) {
+                    const safeSource = escapeHTML(originalInput);
+                    domainIcon = `<span class="ip-detail-link" title="来源域名: ${safeSource}" onclick="event.stopPropagation()" style="cursor:default;">🌐</span>`;
+                }
             }
-            return `<span class="ip-cell"><span class="copy-ip" onclick="copyToClipboard('${jsIP}', event)"${titleAttr}>${safeIP}</span><a class="ip-detail-link" href="https://ippure.com/?ip=${hrefIP}" target="_blank" rel="noopener noreferrer" title="前往 ippure.com 查看 IP 详情" onclick="event.stopPropagation()">ⓘ</a></span>`;
+            return `<span class="ip-cell"><span class="copy-ip" onclick="copyToClipboard('${jsIP}', event)">${safeIP}</span>${domainIcon}<a class="ip-detail-link" href="https://ippure.com/?ip=${hrefIP}" target="_blank" rel="noopener noreferrer" title="前往 ippure.com 查看 IP 详情" onclick="event.stopPropagation()">ⓘ</a></span>`;
         }
 
         function renderNSBRowFromCSV(headers, r) {
