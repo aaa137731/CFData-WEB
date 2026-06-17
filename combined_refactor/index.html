@@ -648,6 +648,11 @@
             padding: 10px;
             background: var(--card-bg);
             min-width: 0;
+            height: 96px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
         }
 
         .background-status-label {
@@ -677,6 +682,10 @@
         .background-stat-line {
             font-size: 13px;
             word-break: keep-all;
+        }
+
+        .background-status-wide-full {
+            grid-column: 1 / -1;
         }
 
         .background-stat-grid {
@@ -1528,6 +1537,15 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
+            .background-status-item,
+            .background-status-wide-full {
+                height: 112px;
+            }
+
+            .background-status-wide-full {
+                grid-column: 1;
+            }
+
             .option-item {
                 flex-direction: column;
                 align-items: flex-start;
@@ -1841,10 +1859,8 @@
                 <div class="background-status-item" style="grid-column:1/-1;"><span class="background-status-label">数据来源</span><div class="background-status-value" id="backgroundSource">-</div></div>
                 <div class="background-status-item"><span class="background-status-label">阶段</span><div class="background-status-value" id="backgroundPhase">-</div></div>
                 <div class="background-status-item"><span class="background-status-label">进度</span><div class="background-status-value" id="backgroundProgressText">-</div></div>
-                <div class="background-status-item" id="backgroundExtraItem"><span class="background-status-label">详细/数据中心</span><div class="background-status-value" id="backgroundExtraCount">0 / 0</div></div>
-                <div class="background-status-item background-status-wide"><span class="background-status-label">扫描结果</span><div class="background-status-value" id="backgroundResultCount">0</div></div>
-                <div class="background-status-item background-status-wide"><span class="background-status-label">测速结果</span><div class="background-status-value" id="backgroundSpeedCount">0</div></div>
-                <div class="background-status-item" style="grid-column:1/-1;"><span class="background-status-label">状态</span><div class="background-status-value" id="backgroundMessage">-</div></div>
+                <div class="background-status-item background-status-wide-full"><span class="background-status-label">扫描结果</span><div class="background-status-value" id="backgroundResultCount">0</div></div>
+                <div class="background-status-item background-status-wide-full"><span class="background-status-label">测速结果</span><div class="background-status-value" id="backgroundSpeedCount">0</div></div>
             </div>
         </div>
 
@@ -3111,7 +3127,12 @@
             document.getElementById('backgroundStatusTitle').textContent = `🕘 ${snapshot.label || '后台任务运行中'}`;
             const source = snapshot.params?.sourceURL || snapshot.params?.fileName || (snapshot.mode === 'official' ? '官方内置地址库' : '') || snapshot.params?.outFile || snapshot.params?.dc || '-';
             document.getElementById('backgroundSource').textContent = source;
-            document.getElementById('backgroundPhase').textContent = snapshot.phase || '-';
+            const phaseText = snapshot.phase || '-';
+            let dcSuffix = '';
+            if ((snapshot.testCount || 0) > 0 || (snapshot.dcCount || 0) > 0) {
+                dcSuffix = ` (详细: ${snapshot.testCount || 0} / DC: ${snapshot.dcCount || 0})`;
+            }
+            document.getElementById('backgroundPhase').textContent = phaseText + dcSuffix;
             const current = snapshot.current || 0;
             const total = snapshot.total || 0;
             const percent = Number.isFinite(snapshot.percent) ? snapshot.percent : (total > 0 ? current / total * 100 : 0);
@@ -3137,11 +3158,6 @@
             const speedFailed = snapshot.speedFailed || Math.max(speedTotal - speedSuccess, 0);
             document.getElementById('backgroundResultCount').innerHTML = `<div class="background-stat-grid">${formatStats(scanTotal, scanSuccess, scanFailed, scanSuccess)}</div>`;
             document.getElementById('backgroundSpeedCount').innerHTML = `<div class="background-stat-grid">${formatStats(speedTotal, speedSuccess, speedFailed, snapshot.speedQualified || 0)}</div>`;
-            const extra = document.getElementById('backgroundExtraItem');
-            const showExtra = (snapshot.testCount || 0) > 0 || (snapshot.dcCount || 0) > 0;
-            if (extra) extra.style.display = showExtra ? 'block' : 'none';
-            document.getElementById('backgroundExtraCount').textContent = `${snapshot.testCount || 0} / ${snapshot.dcCount || 0}`;
-            document.getElementById('backgroundMessage').textContent = snapshot.message || '-';
             const followBtn = document.getElementById('btnFollowBackground');
             if (followBtn) {
                 followBtn.disabled = backgroundTaskFollowing;
