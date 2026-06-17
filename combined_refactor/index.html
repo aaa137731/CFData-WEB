@@ -3430,7 +3430,7 @@
             const tbody = document.querySelector('#scanTable tbody');
             const latencyVal = parseFloat(row.LatencyStr);
             const latencyColor = getLatencyColor(latencyVal);
-            const html = `<tr><td>${renderIPCell(row.IP)}</td><td><span class="copy-ip" onclick="copyToClipboard('${row.Port ?? ''}', event)">${row.Port ?? '-'}</span></td><td>${row.DataCenter || '-'}</td><td>${row.DCCountry || '-'}</td><td>${row.Region || '-'}</td><td>${row.City || '-'}</td><td style="color:${latencyColor}; font-weight:600;">${row.LatencyStr || '-'}</td></tr>`;
+            const html = `<tr><td>${renderIPCell(row.IP, row.OriginalInput || row.originalInput)}</td><td><span class="copy-ip" onclick="copyToClipboard('${row.Port ?? ''}', event)">${row.Port ?? '-'}</span></td><td>${row.DataCenter || '-'}</td><td>${row.DCCountry || '-'}</td><td>${row.Region || '-'}</td><td>${row.City || '-'}</td><td style="color:${latencyColor}; font-weight:600;">${row.LatencyStr || '-'}</td></tr>`;
             tbody.insertAdjacentHTML('beforeend', html);
         }
 
@@ -3479,17 +3479,25 @@
             return String(v ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         }
 
-        function renderIPCell(ip) {
+        function renderIPCell(ip, originalInput) {
             const rawIP = String(ip ?? '');
             const safeIP = escapeHTML(rawIP);
             const jsIP = escapeJSString(rawIP);
             const hrefIP = encodeURIComponent(rawIP);
-            return `<span class="ip-cell"><span class="copy-ip" onclick="copyToClipboard('${jsIP}', event)">${safeIP}</span><a class="ip-detail-link" href="https://ippure.com/?ip=${hrefIP}" target="_blank" rel="noopener noreferrer" title="前往 ippure.com 查看 IP 详情" onclick="event.stopPropagation()">ⓘ</a></span>`;
+            let titleAttr = '';
+            if (originalInput && originalInput !== rawIP) {
+                const isDomain = /[a-zA-Z]/.test(originalInput);
+                const sourceType = isDomain ? '域名' : 'IP';
+                const safeSource = escapeHTML(originalInput);
+                titleAttr = ` title="来源${sourceType}: ${safeSource}"`;
+            }
+            return `<span class="ip-cell"><span class="copy-ip" onclick="copyToClipboard('${jsIP}', event)"${titleAttr}>${safeIP}</span><a class="ip-detail-link" href="https://ippure.com/?ip=${hrefIP}" target="_blank" rel="noopener noreferrer" title="前往 ippure.com 查看 IP 详情" onclick="event.stopPropagation()">ⓘ</a></span>`;
         }
 
         function renderNSBRowFromCSV(headers, r) {
             let ipIndex = headers.indexOf('IP地址');
             let portIndex = headers.indexOf('端口号');
+            let originalInputIndex = headers.indexOf('OriginalInput');
             let latencyIndex = headers.indexOf('网络延迟');
             let lossIndex = headers.indexOf('丢包率');
             let speedIndex = headers.indexOf('下载速度');
@@ -3499,7 +3507,8 @@
                 const val = escapeHTML(r[idx] ?? '');
                 const rawVal = String(r[idx] ?? '');
                 if (idx === ipIndex && ipIndex !== -1) {
-                    return `<td>${renderIPCell(rawVal)}</td>`;
+                    const originalInput = originalInputIndex !== -1 ? r[originalInputIndex] : rawVal;
+                    return `<td>${renderIPCell(rawVal, originalInput)}</td>`;
                 } else if (idx === portIndex && portIndex !== -1) {
                     return `<td><span class="copy-ip" onclick="copyToClipboard('${escapeJSString(rawVal)}', event)">${val}</span></td>`;
                 } else if (idx === latencyIndex && latencyIndex !== -1) {
@@ -3895,7 +3904,7 @@
             const isTesting = currentSpeedTestingIP === res.IP;
             const speedDisabled = isTesting || isTaskRunning || officialBatchSpeedRunning;
             const buttonText = isTesting ? '测速中' : (res.Speed ? '重新测速' : '测速');
-            const row = `<tr class="${speedStatus === 'qualified' ? 'row-qualified' : (speedStatus === 'unqualified' ? 'row-unqualified' : '')}"><td>${renderIPCell(res.IP)}</td><td><span class="copy-ip" onclick="copyToClipboard('${port}', event)">${port}</span></td><td>${meta.dc || '-'}</td><td>${meta.dcCountry || '-'}</td><td>${meta.region || '-'}</td><td>${meta.city || '-'}</td><td>${(res.LossRate * 100).toFixed(0)}%</td><td>${(res.MinLatency / 1_000_000).toFixed(0)} ms</td><td>${(res.MaxLatency / 1_000_000).toFixed(0)} ms</td><td style="color:${getLatencyColor(res.AvgLatency / 1_000_000)}; font-weight:600;">${(res.AvgLatency / 1_000_000).toFixed(0)} ms</td><td style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:none;"><span class="speed-result" id="speed-val-${res.IP.replace(/[:.]/g, '_')}" style="color:${speedColor};"><span>${speedText}</span>${renderSpeedStatusTag(speedStatus)}</span><button class="action-btn speed-btn" id="btn-speed-${res.IP.replace(/[:.]/g, '_')}" onclick="runSpeedTest('${res.IP}')" ${speedDisabled ? 'disabled' : ''}>${buttonText}</button></td></tr>`;
+            const row = `<tr class="${speedStatus === 'qualified' ? 'row-qualified' : (speedStatus === 'unqualified' ? 'row-unqualified' : '')}"><td>${renderIPCell(res.IP, res.OriginalInput || res.originalInput)}</td><td><span class="copy-ip" onclick="copyToClipboard('${port}', event)">${port}</span></td><td>${meta.dc || '-'}</td><td>${meta.dcCountry || '-'}</td><td>${meta.region || '-'}</td><td>${meta.city || '-'}</td><td>${(res.LossRate * 100).toFixed(0)}%</td><td>${(res.MinLatency / 1_000_000).toFixed(0)} ms</td><td>${(res.MaxLatency / 1_000_000).toFixed(0)} ms</td><td style="color:${getLatencyColor(res.AvgLatency / 1_000_000)}; font-weight:600;">${(res.AvgLatency / 1_000_000).toFixed(0)} ms</td><td style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:none;"><span class="speed-result" id="speed-val-${res.IP.replace(/[:.]/g, '_')}" style="color:${speedColor};"><span>${speedText}</span>${renderSpeedStatusTag(speedStatus)}</span><button class="action-btn speed-btn" id="btn-speed-${res.IP.replace(/[:.]/g, '_')}" onclick="runSpeedTest('${res.IP}')" ${speedDisabled ? 'disabled' : ''}>${buttonText}</button></td></tr>`;
             document.querySelector('#testTable tbody').insertAdjacentHTML('beforeend', row);
         }
 
