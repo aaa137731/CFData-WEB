@@ -16,7 +16,6 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
@@ -71,7 +70,7 @@ public class MainActivity extends Activity {
         rootView.addView(loadingView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(rootView, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         applySystemBarInsets(rootView);
-        setStatusBarTheme(isDarkMode());
+        applyStatusBarTheme();
         configureWebView();
         startBackend();
     }
@@ -81,27 +80,22 @@ public class MainActivity extends Activity {
         return nightMode == Configuration.UI_MODE_NIGHT_YES;
     }
 
-    private void setStatusBarTheme(boolean dark) {
-        int color = dark ? Color.rgb(15, 23, 42) : Color.rgb(246, 248, 251);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            getWindow().setStatusBarColor(color);
-            getWindow().setNavigationBarColor(color);
-            getWindow().getDecorView().getWindowInsetsController().setSystemBarsAppearance(
-                dark ? 0 : WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-            );
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            getWindow().setStatusBarColor(color);
-            getWindow().setNavigationBarColor(color);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                View decor = getWindow().getDecorView();
-                if (dark) {
-                    decor.setSystemUiVisibility(decor.getSystemUiVisibility() & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-                } else {
-                    decor.setSystemUiVisibility(decor.getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-                }
-            }
+    private void applyStatusBarTheme() {
+        setStatusBarAppearance(isDarkMode());
+    }
+
+    private void setStatusBarAppearance(boolean dark) {
+        int bgColor = dark ? Color.rgb(15, 23, 42) : Color.rgb(246, 248, 251);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        getWindow().setStatusBarColor(bgColor);
+        getWindow().setNavigationBarColor(bgColor);
+        rootView.setBackgroundColor(bgColor);
+        View decor = getWindow().getDecorView();
+        int flags = decor.getSystemUiVisibility();
+        if (dark) {
+            decor.setSystemUiVisibility(flags & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        } else {
+            decor.setSystemUiVisibility(flags | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
         }
     }
 
@@ -358,8 +352,8 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void setDarkMode(boolean dark) {
-            mainHandler.post(() -> setStatusBarTheme(dark));
+        public void setDarkModeStatusBar(boolean dark) {
+            mainHandler.post(() -> setStatusBarAppearance(dark));
         }
 
         @JavascriptInterface

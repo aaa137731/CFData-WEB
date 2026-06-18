@@ -2402,7 +2402,7 @@
             function setDark(dark) {
                 document.documentElement.classList.toggle('dark-theme', dark);
                 document.body.classList.toggle('dark-theme', dark);
-                try { if (window.CFDataAndroid) window.CFDataAndroid.setDarkMode(dark); } catch(e) {}
+                try { if (window.CFDataAndroid) window.CFDataAndroid.setDarkModeStatusBar(dark); } catch(e) {}
             }
 
             if (theme === 'auto') {
