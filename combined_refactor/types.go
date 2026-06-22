@@ -14,7 +14,9 @@ import (
 )
 
 const (
-	requestURL = "speed.cloudflare.com/cdn-cgi/trace"
+	requestURL       = "speed.cloudflare.com/cdn-cgi/trace"
+	scanModeTCPing   = "tcping"
+	scanModeHTTPing  = "httping"
 )
 
 const (

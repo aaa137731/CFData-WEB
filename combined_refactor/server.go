@@ -136,8 +136,12 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			if params.Delay < 0 {
 				params.Delay = 0
 			}
-			session.startTaskNamed("官方优选扫描", "official", map[string]interface{}{"ipType": params.IPType, "threads": params.Threads, "port": params.Port, "delay": params.Delay}, func(ctx context.Context, session *appSession) {
-				runOfficialTask(ctx, session, params.IPType, params.Threads, params.Port)
+			scanMode := params.ScanMode
+			if scanMode == "" {
+				scanMode = scanModeTCPing
+			}
+			session.startTaskNamed("官方优选扫描", "official", map[string]interface{}{"ipType": params.IPType, "threads": params.Threads, "port": params.Port, "delay": params.Delay, "scanMode": scanMode}, func(ctx context.Context, session *appSession) {
+				runOfficialTask(ctx, session, params.IPType, params.Threads, params.Port, params.Delay, scanMode)
 			})
 		},
 		"start_test": func(data json.RawMessage) {
@@ -152,8 +156,12 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			if params.Delay < 0 {
 				params.Delay = 0
 			}
-			session.startTaskNamed("官方详细测试", "official", map[string]interface{}{"dc": params.DC, "port": params.Port, "delay": params.Delay}, func(ctx context.Context, session *appSession) {
-				runDetailedTest(ctx, session, params.DC, params.Port, params.Delay)
+			scanMode := params.ScanMode
+			if scanMode == "" {
+				scanMode = scanModeTCPing
+			}
+			session.startTaskNamed("官方详细测试", "official", map[string]interface{}{"dc": params.DC, "port": params.Port, "delay": params.Delay, "scanMode": scanMode}, func(ctx context.Context, session *appSession) {
+				runDetailedTest(ctx, session, params.DC, params.Port, params.Delay, scanMode)
 			})
 		},
 		"start_speed_test": func(data json.RawMessage) {
@@ -234,7 +242,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			}
-			session.startTaskNamed("非标优选", "nsb", map[string]interface{}{"fileName": params.FileName, "sourceURL": params.SourceURL, "outFile": params.OutFile, "maxThreads": params.MaxThreads, "fallbackPort": params.FallbackPort, "speedTest": params.SpeedTest, "speedURL": params.SpeedURL, "enableTLS": params.EnableTLS, "delay": params.Delay, "resultLimit": params.ResultLimit, "dc": params.DC, "speedMin": params.SpeedMin, "speedLimit": params.SpeedLimit, "compact": params.Compact}, func(ctx context.Context, session *appSession) {
+			scanMode := params.ScanMode
+			if scanMode == "" {
+				scanMode = scanModeTCPing
+			}
+			session.startTaskNamed("非标优选", "nsb", map[string]interface{}{"fileName": params.FileName, "sourceURL": params.SourceURL, "outFile": params.OutFile, "maxThreads": params.MaxThreads, "fallbackPort": params.FallbackPort, "speedTest": params.SpeedTest, "speedURL": params.SpeedURL, "enableTLS": params.EnableTLS, "delay": params.Delay, "resultLimit": params.ResultLimit, "dc": params.DC, "speedMin": params.SpeedMin, "speedLimit": params.SpeedLimit, "compact": params.Compact, "scanMode": scanMode}, func(ctx context.Context, session *appSession) {
 				fileName := params.FileName
 				fileContent := params.FileContent
 				if hasSourceURL {
@@ -250,7 +262,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					fileName = params.SourceURL
 					fileContent = content
 				}
-				runNSBTask(ctx, session, fileName, fileContent, params.OutFile, params.MaxThreads, params.FallbackPort, params.SpeedTest, params.SpeedURL, params.EnableTLS, params.Delay, params.ResultLimit, params.DC, params.SpeedMin, params.SpeedLimit, params.Compact)
+				runNSBTask(ctx, session, fileName, fileContent, params.OutFile, params.MaxThreads, params.FallbackPort, params.SpeedTest, params.SpeedURL, params.EnableTLS, params.Delay, params.ResultLimit, params.DC, params.SpeedMin, params.SpeedLimit, params.Compact, scanMode)
 			})
 		},
 		"start_nsb_speed_batch": func(data json.RawMessage) {

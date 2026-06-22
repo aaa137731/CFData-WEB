@@ -22,6 +22,7 @@ type cliConfig struct {
 	enabled         bool
 	configResolved  bool
 	mode            string
+	scanMode        string
 	ipType          int
 	threads         int
 	port            int
@@ -67,6 +68,7 @@ type cliExportConfig struct {
 type cliFileConfig struct {
 	CLI             bool    `json:"cli"`
 	Mode            string  `json:"mode"`
+	ScanMode        string  `json:"scanmode"`
 	IPType          int     `json:"iptype"`
 	Threads         int     `json:"threads"`
 	Out             string  `json:"out"`
@@ -220,6 +222,7 @@ func registerCLIFlags() *cliConfig {
 	flag.Usage = printCLIUsage
 	flag.BoolVar(&cfg.enabled, "cli", false, "启用命令行模式（默认启动 Web）")
 	flag.StringVar(&cfg.mode, "mode", "official", "CLI 模式：official 或 nsb")
+	flag.StringVar(&cfg.scanMode, "scanmode", "tcping", "扫描方式：tcping（默认，仅 TCP 握手延迟）或 httping（TTFB 全链路延迟，含 TLS 握手，数值偏高）")
 	flag.IntVar(&cfg.ipType, "iptype", 4, "官方模式 IP 类型：4 或 6")
 	flag.IntVar(&cfg.threads, "threads", 100, "扫描并发数")
 	flag.IntVar(&cfg.speedTest, "speedtest", 0, "非标测速线程数；表示同时测速的 IP 数量，0 表示不测速")
@@ -450,6 +453,7 @@ func applyCLIEnvConfig(cfg *cliConfig, provided map[string]bool) {
 		}
 	}
 	setString("mode", "CFDATA_MODE", &cfg.mode)
+	setString("scanmode", "CFDATA_SCANMODE", &cfg.scanMode)
 	setInt("iptype", "CFDATA_IPTYPE", &cfg.ipType)
 	setInt("threads", "CFDATA_THREADS", &cfg.threads)
 	setString("out", "CFDATA_OUT", &cfg.outFile)
@@ -490,7 +494,7 @@ func defaultCLIExportConfig() cliExportConfig {
 }
 
 func defaultCLIFileConfig() cliFileConfig {
-	return cliFileConfig{CLI: true, Mode: "official", IPType: 4, Threads: 100, Out: "ip.csv", SpeedTest: 0, Progress: true, NoColor: false, URL: autoSpeedURLValue, DNS: defaultDNSServers, Debug: false, CompactIPv4: false, TestPort: 443, Delay: 500, DC: "", SpeedLimit: 5, SpeedMin: 0.1, File: "", SourceURL: "", NSBFallbackPort: 0, NSBIPType: "all", NSBQualified: false, NSBDC: "", TLS: true, Compact: true, ResultLimit: 1000, NSBSpeedMin: 0.1, NSBSpeedLimit: 5, Format: "txt", Fields: "compact", Custom: "", GitHub: false, GHBranch: "main", GHPath: "", GHMessage: "update cfdata results"}
+	return cliFileConfig{CLI: true, Mode: "official", ScanMode: "tcping", IPType: 4, Threads: 100, Out: "ip.csv", SpeedTest: 0, Progress: true, NoColor: false, URL: autoSpeedURLValue, DNS: defaultDNSServers, Debug: false, CompactIPv4: false, TestPort: 443, Delay: 500, DC: "", SpeedLimit: 5, SpeedMin: 0.1, File: "", SourceURL: "", NSBFallbackPort: 0, NSBIPType: "all", NSBQualified: false, NSBDC: "", TLS: true, Compact: true, ResultLimit: 1000, NSBSpeedMin: 0.1, NSBSpeedLimit: 5, Format: "txt", Fields: "compact", Custom: "", GitHub: false, GHBranch: "main", GHPath: "", GHMessage: "update cfdata results"}
 }
 
 func (c cliFileConfig) Export() cliExportConfig {
@@ -718,6 +722,7 @@ func applyCLIFileConfig(cfg *cliConfig, fileCfg cliFileConfig, provided map[stri
 		cfg.enabled = fileCfg.CLI
 	}
 	setString("mode", &cfg.mode, fileCfg.Mode)
+	setString("scanmode", &cfg.scanMode, fileCfg.ScanMode)
 	setInt("iptype", &cfg.ipType, fileCfg.IPType)
 	setInt("threads", &cfg.threads, fileCfg.Threads)
 	setString("out", &cfg.outFile, fileCfg.Out)
@@ -995,9 +1000,14 @@ func runOfficialCLI(cfg *cliConfig) error {
 		cfg.speedMin = 0.1
 	}
 
+	scanMode := cfg.scanMode
+	if scanMode == "" {
+		scanMode = scanModeTCPing
+	}
+
 	session := newCLISession(cfg)
 	if err := session.runTaskSync(func(ctx context.Context, session *appSession) {
-		runOfficialTask(ctx, session, cfg.ipType, cfg.threads, cfg.port)
+		runOfficialTask(ctx, session, cfg.ipType, cfg.threads, cfg.port, cfg.delay, scanMode)
 	}); err != nil {
 		return cliTaskError(err)
 	}
@@ -1023,7 +1033,7 @@ func runOfficialCLI(cfg *cliConfig) error {
 	session.testResults = nil
 	session.testMutex.Unlock()
 	if err := session.runTaskSync(func(ctx context.Context, session *appSession) {
-		runDetailedTest(ctx, session, dc, cfg.port, cfg.delay)
+		runDetailedTest(ctx, session, dc, cfg.port, cfg.delay, scanMode)
 	}); err != nil {
 		return cliTaskError(err)
 	}
@@ -1098,7 +1108,11 @@ func runNSBCLI(cfg *cliConfig) error {
 
 	session := newCLISession(cfg)
 	if err := session.runTaskSync(func(ctx context.Context, session *appSession) {
-		runNSBTask(ctx, session, inputName, content, cfg.outFile, cfg.threads, cfg.nsbFallbackPort, cfg.speedTest, speedTestURL, cfg.enableTLS, cfg.delay, cfg.resultLimit, cfg.nsbDC, cfg.nsbSpeedMin, cfg.nsbSpeedLimit, cfg.compactNSB)
+		scanMode := cfg.scanMode
+		if scanMode == "" {
+			scanMode = scanModeTCPing
+		}
+		runNSBTask(ctx, session, inputName, content, cfg.outFile, cfg.threads, cfg.nsbFallbackPort, cfg.speedTest, speedTestURL, cfg.enableTLS, cfg.delay, cfg.resultLimit, cfg.nsbDC, cfg.nsbSpeedMin, cfg.nsbSpeedLimit, cfg.compactNSB, scanMode)
 	}); err != nil {
 		return cliTaskError(err)
 	}

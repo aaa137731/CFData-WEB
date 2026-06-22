@@ -1715,6 +1715,16 @@
                     <input id="officialTargetDC" type="text" value="" placeholder="留空自动选择" disabled>
                 </div>
                 <div class="option-item full-width">
+                    <span class="label">📡 扫描方式</span>
+                    <div class="field-with-action">
+                        <select id="oScanMode" class="speed-url-select" onchange="updateScanModeHint()">
+                            <option value="tcping" selected>TCPing（默认）</option>
+                            <option value="httping">HTTPing</option>
+                        </select>
+                        <input id="oScanModeHint" type="text" value="仅测量 TCP 握手延迟" readonly style="flex:1;min-width:0;">
+                    </div>
+                </div>
+                <div class="option-item full-width">
                     <span class="label">🔗 测速网址</span>
                     <div class="field-with-action">
                         <select id="officialSpeedUrlPreset" class="speed-url-select" onchange="applySpeedUrlPreset('speedTestUrl', this.value)">
@@ -1817,6 +1827,16 @@
                 <div class="option-item">
                     <span class="label">🛠️ 输出文件名</span>
                     <input id="nsbOutFile" type="text" value="ip.csv" placeholder="ip.csv">
+                </div>
+                <div class="option-item full-width">
+                    <span class="label">📡 扫描方式</span>
+                    <div class="field-with-action">
+                        <select id="nScanMode" class="speed-url-select" onchange="updateScanModeHint()">
+                            <option value="tcping" selected>TCPing（默认）</option>
+                            <option value="httping">HTTPing</option>
+                        </select>
+                        <input id="nScanModeHint" type="text" value="仅测量 TCP 握手延迟" readonly style="flex:1;min-width:0;">
+                    </div>
                 </div>
                 <div class="option-item full-width">
                     <span class="label">🔗 测速网址</span>
@@ -2892,6 +2912,35 @@
             if (typeof action === 'function') action();
         }
 
+        function getScanMode() {
+            if (currentMode === 'official') {
+                const el = document.getElementById('oScanMode');
+                return el ? el.value : 'tcping';
+            }
+            const el = document.getElementById('nScanMode');
+            return el ? el.value : 'tcping';
+        }
+
+        function getScanModeHint() {
+            if (currentMode === 'official') {
+                const el = document.getElementById('oScanModeHint');
+                return el || null;
+            }
+            const el = document.getElementById('nScanModeHint');
+            return el || null;
+        }
+
+        function updateScanModeHint() {
+            const mode = getScanMode();
+            const hint = getScanModeHint();
+            if (!hint) return;
+            if (mode === 'httping') {
+                hint.value = '测量 HTTP GET 请求的完整 TTFB（含 TLS 握手），阈值自动放大 2.5 倍';
+            } else {
+                hint.value = '仅测量 TCP 握手延迟';
+            }
+        }
+
         function switchMode(mode) {
             currentMode = mode;
             modeOfficial.classList.toggle('active', mode === 'official');
@@ -2928,6 +2977,7 @@
                 }
             }
             if (!isTaskRunning) resetProgress();
+            updateScanModeHint();
             log(`切换至：${mode === 'official' ? '官方优选' : '非标优选'}`);
         }
 
@@ -3926,7 +3976,7 @@
             resetProgress();
             progressBox.style.display = 'block';
             showDCSelection(dcList);
-            if (!wsSend({ type: 'start_test', data: { dc, port, delay } })) {
+            if (!wsSend({ type: 'start_test', data: { dc, port, delay, scanMode: getScanMode() } })) {
                 currentTestingDC = '';
                 isTaskRunning = false;
                 showDCSelection(dcList);
@@ -4310,7 +4360,7 @@
             updateBadge('testCount', 0);
             updateBadge('dcCount', 0);
 
-            if (!wsSend({ type: 'start_task', data: { ipType, threads, port, delay } })) {
+            if (!wsSend({ type: 'start_task', data: { ipType, threads, port, delay, scanMode: getScanMode() } })) {
                 officialAutoSpeedPending = false;
                 officialAutoStage = '';
                 finishRunningTask('✨ 开始扫描与测试');
@@ -4426,6 +4476,7 @@
                     speedMin,
                     speedLimit,
                     compact,
+                    scanMode: getScanMode(),
                 }
             })) {
                 finishRunningTask('✨ 开始扫描与测试');
